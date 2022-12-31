@@ -4,9 +4,9 @@
 #include <iostream>
 #include "Timing.h"
 
-std::vector<char*> getNeighbours(const int& rows, const int& cols, const int& rowP, const int& colP,std::vector<std::vector<std::vector<char>>> &grid)
+std::vector<std::vector<char*>> getNeighbours(const int& rows, const int& cols, const int& rowP, const int& colP,std::vector<std::vector<std::vector<char>>> &grid)
 {
-    std::vector<char*> neighbors;
+    std::vector<std::vector<char*>> neighbors(2, std::vector<char*>());
     int rowN;
     int colN;
     for (int i = -1; i < 2; i++)
@@ -37,13 +37,14 @@ std::vector<char*> getNeighbours(const int& rows, const int& cols, const int& ro
                 colN = 0;
             }
 
-            neighbors.push_back(&grid[rowN][colN][0]);
+            neighbors[0].push_back(&grid[rowN][colN][0]);
+            neighbors[1].push_back(&grid[rowN][colN][1]);
         }
     }
     return neighbors;
 }
 
-void loadGolFile(const std::string& filename, std::vector<std::vector<std::vector<char>>>&grid, std::vector<std::vector<std::vector<char*>>> &gridLink)
+void loadGolFile(const std::string& filename, std::vector<std::vector<std::vector<char>>>&grid, std::vector<std::vector<std::vector<std::vector<char*>>>>&gridLink)
 {
    
     std::ifstream file(filename);
@@ -78,6 +79,10 @@ void loadGolFile(const std::string& filename, std::vector<std::vector<std::vecto
             for (auto& row:gridLink)
             {
                 row.resize(numCols);
+                for (auto& fields : row)
+                {
+                    fields.resize(2);
+                }
             }
             
             // Read the characters from the file into the grid
@@ -102,16 +107,16 @@ void loadGolFile(const std::string& filename, std::vector<std::vector<std::vecto
     }
 }
 
-void storeGolFile(const std::vector<std::vector<std::vector<char>>>& grid, const std::string& filename) {
+void storeGolFile(const std::vector<std::vector<std::vector<char>>>& grid, const std::string& filename, char &target) {
     std::ofstream file(filename);
     if (file.is_open()) {
         // Write the number of rows and columns in the first line
-        file << grid[0].size() << ',' << grid.size() << '\n';
+        file << grid[target].size() << ',' << grid.size() << '\n';
 
         // Write the characters from the grid to the file
         for (const auto& row : grid) {
             for (const auto& c : row) {
-                file << c[0];
+                file << c[target];
             }
             file << '\n';
         }
@@ -155,28 +160,33 @@ char rulesOfLife(std::vector<char*, std::allocator<char*>>& neighborList, char &
     }
 }
 
-void startGameOfLife(std::vector<std::vector<std::vector<char>>> &gridIn, std::vector<std::vector<std::vector<char*>>> &neighbors, int nCycles)
+
+void startGameOfLife(std::vector<std::vector<std::vector<char>>> &gridIn, std::vector<std::vector<std::vector<std::vector<char*>>>> &neighbors, int nCycles, char &target)
 {
     int nRows = gridIn.size();
     int nCols = gridIn[0].size();
-    char result;
-
+    char t1 = 0;
+    char t2 = 1;
+ 
     for (int k = 0; k < nCycles; k++)
     {
         for (int i = 0; i < nRows; i++)
         {
             for (int j = 0; j < nCols; j++)
             {
-                gridIn[i][j][1] = rulesOfLife(neighbors[i][j], gridIn[i][j][0]);
+                gridIn[i][j][t2] = rulesOfLife(neighbors[i][j][t1], gridIn[i][j][t1]);
+                target = t2;
+                std::swap(t1, t2);
             }
         }
+        /*
         for (int i = 0; i < nRows; i++)
         {
             for (int j = 0; j < nCols; j++)
             {
                 gridIn[i][j][0] = gridIn[i][j][1];
             }
-        }
+        }*/
     }
 }
 
@@ -195,9 +205,10 @@ void printGoL(std::vector<std::vector<std::vector<char>>>& gridIn)
 
 int main(int argc, char* argv[])
 {
-    std::string inputFile;
-    std::string outputFile;
+    std::string inputFile = "random250_in.gol";
+    std::string outputFile = "test.gol";
     int generations = 250;
+    char target = 0;
     bool time = false;
 
     std::cout << "You have entered " << argc << " arguments:" << "\n";
@@ -226,33 +237,34 @@ int main(int argc, char* argv[])
             time = true;
         }
     }
+
     if (time)
     {
         Timing* timing = Timing::getInstance();
 
         timing->startSetup();
         std::vector<std::vector<std::vector<char>>> gridIn;
-        std::vector<std::vector<std::vector<char*>>> gridLink;
+        std::vector<std::vector<std::vector<std::vector<char*>>>> gridLink;
         loadGolFile(inputFile, gridIn, gridLink);
         timing->stopSetup();
 
         timing->startComputation();
-        startGameOfLife(gridIn, gridLink,generations);
+        startGameOfLife(gridIn, gridLink,generations, target);
         timing->stopComputation();
 
         timing->startFinalization();
-        storeGolFile(gridIn, outputFile);
+        storeGolFile(gridIn, outputFile, target);
         timing->stopFinalization();
 
         std::string output = timing->getResults();
         std::cout << output << std::endl;
     }
-    else {
+    {
         std::vector<std::vector<std::vector<char>>> gridIn;
-        std::vector<std::vector<std::vector<char*>>> gridLink;
+        std::vector<std::vector<std::vector<std::vector<char*>>>> gridLink;
         loadGolFile(inputFile, gridIn, gridLink);
-        startGameOfLife(gridIn, gridLink, generations);
-        storeGolFile(gridIn, outputFile);
+        startGameOfLife(gridIn, gridLink, generations, target);
+        storeGolFile(gridIn, outputFile, target);
     }
     return 0;
 }
