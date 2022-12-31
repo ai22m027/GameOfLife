@@ -2,8 +2,9 @@
 #include <sstream>
 #include <vector>
 #include <iostream>
+#include "Timing.h"
 
-std::vector<char*> getNeighbours(const int& rows, const int& cols, const int& rowP, const int& colP, std::vector<std::vector<std::vector<char>>>& grid)
+std::vector<char*> getNeighbours(const int& rows, const int& cols, const int& rowP, const int& colP,std::vector<std::vector<std::vector<char>>> &grid)
 {
     std::vector<char*> neighbors;
     int rowN;
@@ -192,46 +193,66 @@ void printGoL(std::vector<std::vector<std::vector<char>>>& gridIn)
 
 }
 
-
 int main(int argc, char* argv[])
 {
-    std::string inputFile = "random2000_in.gol";
-    std::string outputFile = "MYrandom2000_out.gol";
+    std::string inputFile;
+    std::string outputFile;
     int generations = 250;
     bool time = false;
 
-    /*std::cout << "You have entered " << argc << " arguments:" << "\n";
-    for (int i = 0; i < argc; ++i)
-    {
-        if (std::strcmp(argv[i],"--load"))
-        {
-            
-            inputFile = argv[i + 1];
-            std::cout << "load from: " << inputFile << std::endl;
-            i++;
+    std::cout << "You have entered " << argc << " arguments:" << "\n";
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--load") {
+            if (i + 1 < argc) {
+                inputFile += argv[++i];
+            }
         }
-        else if (std::strcmp(argv[i], "--save"))
-        {
-            outputFile = argv[i + 1];
-            std::cout << "save to: " << outputFile << std::endl;
-            i++;
+        else if (arg == "--save") {
+            if (i + 1 < argc) 
+            {
+                outputFile.clear();
+                outputFile += argv[++i];
+            }
         }
-        else if (std::strcmp(argv[i], "--generations"))
-        {
-            generations = std::stoi(argv[i + 1]);
-            std::cout << "num of generations: " << generations << std::endl;
-            i++;
+        else if (arg == "--generations") {
+            if (i + 1 < argc) 
+            {
+                generations = std::stoi(argv[i + 1]);
+                ++i;
+            }
         }
-        else if (std::strcmp(argv[i], "--measure"))
-        {
+        else if (arg == "--measure") {
             time = true;
         }
-    }*/
+    }
+    if (time)
+    {
+        Timing* timing = Timing::getInstance();
 
-    std::vector<std::vector<std::vector<char>>> gridIn;
-    std::vector<std::vector<std::vector<char*>>> gridLink;
+        timing->startSetup();
+        std::vector<std::vector<std::vector<char>>> gridIn;
+        std::vector<std::vector<std::vector<char*>>> gridLink;
+        loadGolFile(inputFile, gridIn, gridLink);
+        timing->stopSetup();
 
-    loadGolFile(inputFile, gridIn, gridLink);
-    startGameOfLife(gridIn, gridLink,generations);
-    storeGolFile(gridIn, outputFile);
+        timing->startComputation();
+        startGameOfLife(gridIn, gridLink,generations);
+        timing->stopComputation();
+
+        timing->startFinalization();
+        storeGolFile(gridIn, outputFile);
+        timing->stopFinalization();
+
+        std::string output = timing->getResults();
+        std::cout << output << std::endl;
+    }
+    else {
+        std::vector<std::vector<std::vector<char>>> gridIn;
+        std::vector<std::vector<std::vector<char*>>> gridLink;
+        loadGolFile(inputFile, gridIn, gridLink);
+        startGameOfLife(gridIn, gridLink, generations);
+        storeGolFile(gridIn, outputFile);
+    }
+    return 0;
 }
